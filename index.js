@@ -3,6 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const cors = require('cors');
 const fs = require('fs');
+const mysql = require('mysql');
 
 const app = express();
 const port = 3001;
@@ -19,6 +20,22 @@ if (!fs.existsSync(albumArtDirectory)) {
   fs.mkdirSync(albumArtDirectory);
 }
 
+// MySQL connection
+const db = mysql.createConnection({
+  host: 'localhost',
+  user: 'root', // Replace with your MySQL username
+  password: 'password', // Replace with your MySQL password
+  database: 'musicApp'
+});
+
+db.connect(err => {
+  if (err) {
+    console.error('Error connecting to the database:', err);
+  } else {
+    console.log('Connected to the MySQL database.');
+  }
+});
+
 // Storage configuration for multer
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -30,9 +47,6 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage });
-
-// In-memory store for songs
-let songs = [];
 
 // Serve static files from the uploads and albumArt directories
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -51,7 +65,7 @@ const extractAlbumArt = async (filePath) => {
       const fileExtension = albumArt.format.split('/')[1]; // Extract file extension
       const imagePath = path.join(albumArtDirectory, `${Date.now()}-albumart.${fileExtension}`);
       fs.writeFileSync(imagePath, albumArt.data);
-      return `http://localhost:${port}/albumArt/${path.basename(imagePath)}`;
+      return `http://song-app-bakend.vercel.app:${port}/albumArt/${path.basename(imagePath)}`;
     } else {
       console.log('No album art found');
     }
@@ -63,33 +77,48 @@ const extractAlbumArt = async (filePath) => {
 
 // Endpoint to fetch all songs
 app.get('/api/songs', (req, res) => {
-  res.json(songs);
+  db.query('SELECT * FROM songs', (err, results) => {
+    if (err) {
+      return res.status(500).json({ error: 'Error fetching songs' });
+    }
+    res.json(results);
+  });
 });
 
 // Endpoint to upload a new song
 app.post('/api/songs', upload.single('file'), async (req, res) => {
-  const { title } = req.body;
-  const fileUrl = `http://localhost:${port}/uploads/${req.file.filename}`;
+  const fileUrl = `http://song-app-bakend.vercel.app:${port}/uploads/${req.file.filename}`;
 
-  // Extract album art from the uploaded file
+  // Extract album art and metadata from the uploaded file
+  const metadata = await extractAlbumArt(req.file.path);
+  const { common } = metadata;
+  const { title, artist, album, year, genre, picture, duration } = common;
+
   const albumArtUrl = await extractAlbumArt(req.file.path);
 
   const newSong = {
-    id: Date.now(),
     title,
-    fileUrl,
+    artist,
+    album,
+    year,
+    genre: genre.join(', '),
     albumArtUrl,
+    fileUrl,
+    duration
   };
 
-  songs.push(newSong);
-
-  res.status(201).json(newSong);
+  db.query('INSERT INTO songs SET ?', newSong, (err, result) => {
+    if (err) {
+      return res.status(500).json({ error: 'Error saving song to the database' });
+    }
+    res.status(201).json({ id: result.insertId, ...newSong });
+  });
 });
 
 // Endpoint to update a song
 app.put('/api/songs/:id', upload.single('file'), async (req, res) => {
   const { id } = req.params;
-  const { title } = req.body;
+  const { title, artist, album, year, genre, duration } = req.body;
 
   const songIndex = songs.findIndex((song) => song.id === parseInt(id));
   if (songIndex === -1) {
@@ -104,11 +133,11 @@ app.put('/api/songs/:id', upload.single('file'), async (req, res) => {
   // Update file if provided
   if (req.file) {
     // Delete old file
-    const oldFilePath = songs[songIndex].fileUrl.replace(`http://localhost:${port}/uploads/`, '');
+    const oldFilePath = songs[songIndex].fileUrl.replace(`http://song-app-bakend.vercel.app:${port}/uploads/`, '');
     fs.unlinkSync(path.join(__dirname, 'uploads', oldFilePath));
 
     // Set new file URL
-    const newFileUrl = `http://localhost:${port}/uploads/${req.file.filename}`;
+    const newFileUrl = `http://song-app-bakend.vercel.app:${port}/uploads/${req.file.filename}`;
     songs[songIndex].fileUrl = newFileUrl;
 
     // Extract new album art from the uploaded file
@@ -125,11 +154,11 @@ app.delete('/api/songs/:id', (req, res) => {
 
   const songIndex = songs.findIndex((song) => song.id === parseInt(id));
   if (songIndex !== -1) {
-    const oldFilePath = songs[songIndex].fileUrl.replace(`http://localhost:${port}/uploads/`, '');
+    const oldFilePath = songs[songIndex].fileUrl.replace(`http://song-app-bakend.vercel.app:${port}/uploads/`, '');
     fs.unlinkSync(path.join(__dirname, 'uploads', oldFilePath));
 
     if (songs[songIndex].albumArtUrl) {
-      const oldAlbumArtPath = songs[songIndex].albumArtUrl.replace(`http://localhost:${port}/albumArt/`, '');
+      const oldAlbumArtPath = songs[songIndex].albumArtUrl.replace(`http://song-app-bakend.vercel.app:${port}/albumArt/`, '');
       fs.unlinkSync(path.join(albumArtDirectory, oldAlbumArtPath));
     }
 
@@ -142,11 +171,11 @@ app.delete('/api/songs/:id', (req, res) => {
 // Endpoint to clear all songs
 app.delete('/api/songs', (req, res) => {
   songs.forEach(song => {
-    const oldFilePath = song.fileUrl.replace(`http://localhost:${port}/uploads/`, '');
+    const oldFilePath = song.fileUrl.replace(`http://song-app-bakend.vercel.app:${port}/uploads/`, '');
     fs.unlinkSync(path.join(__dirname, 'uploads', oldFilePath));
 
     if (song.albumArtUrl) {
-      const oldAlbumArtPath = song.albumArtUrl.replace(`http://localhost:${port}/albumArt/`, '');
+      const oldAlbumArtPath = song.albumArtUrl.replace(`http://song-app-bakend.vercel.app:${port}/albumArt/`, '');
       fs.unlinkSync(path.join(albumArtDirectory, oldAlbumArtPath));
     }
   });
@@ -156,5 +185,5 @@ app.delete('/api/songs', (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
+  console.log(`Server is running on http://song-app-bakend.vercel.app:${port}`);
 });
