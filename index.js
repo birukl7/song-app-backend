@@ -20,16 +20,6 @@ const albumArtDirectory = path.join(__dirname, 'albumArt');
 if (!fs.existsSync(albumArtDirectory)) {
   fs.mkdirSync(albumArtDirectory);
 }
-
-    // host: '109.70.148.48',
-  // user: 'biruklir_biruk', 
-  // password: ')uEpUB*r7mgv', 
-  // database: 'biruklir_song_app'
-
-
-  // const mm = await import('music-metadata'); 
-  // const metadata = await mm.parseFile(filePath);
-
 // MySQL connection
 const db = mysql.createConnection({
   host: process.env.DB_HOST,
