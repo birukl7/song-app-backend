@@ -9,13 +9,14 @@ require('dotenv').config();
 const app = express();
 
 const corsOptions = {
-  origin: 'https://song-app-backend.vercel.app',
+  origin: 'https://song-app-frontend.vercel.app/',
+  // origin: 'https://localhost:3000',
   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
   credentials: true,
   optionsSuccessStatus: 204
 };
 
-app.use(cors(corsOptions));
+app.use(cors());
 
 // Middleware to parse JSON bodies
 app.use(express.json());
