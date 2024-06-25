@@ -1,24 +1,21 @@
-require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const cors = require('cors');
 const fs = require('fs');
 const mysql = require('mysql');
+require('dotenv').config();
 
 const app = express();
 
 const corsOptions = {
-  origin: 'https://song-app-backend.vercel.app', // Replace with your frontend app URL
+  origin: 'https://song-app-backend.vercel.app',
   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
   credentials: true,
   optionsSuccessStatus: 204
 };
 
 app.use(cors(corsOptions));
-
-
-
 
 // Middleware to parse JSON bodies
 app.use(express.json());
