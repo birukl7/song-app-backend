@@ -7,7 +7,6 @@ const fs = require('fs');
 const mysql = require('mysql');
 
 const app = express();
-const port = 3001;
 
 // Enable CORS for all routes
 app.use(cors());
@@ -20,11 +19,12 @@ const albumArtDirectory = path.join(__dirname, 'albumArt');
 if (!fs.existsSync(albumArtDirectory)) {
   fs.mkdirSync(albumArtDirectory);
 }
+
 // MySQL connection
 const db = mysql.createConnection({
   host: process.env.DB_HOST,
-  user: process.env.DB_USER, // Use environment variable for username
-  password: process.env.DB_PASSWORD, // Use environment variable for password
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE
 });
 
@@ -55,21 +55,20 @@ app.use('/albumArt', express.static(albumArtDirectory));
 // Helper function to extract album art and metadata
 const extractMetadata = async (filePath) => {
   try {
-
-    const mm = await import('music-metadata')
+    const mm = await import('music-metadata');
     const metadata = await mm.parseFile(filePath);
     const common = metadata.common || {};
     const picture = common.picture && common.picture[0];
     const lyrics = common.lyrics ? common.lyrics.join('\n') : '';
 
-    console.log(common)
+    console.log(common);
 
     let albumArtUrl = null;
     if (picture) {
       const fileExtension = picture.format.split('/')[1];
       const imagePath = path.join(albumArtDirectory, `${Date.now()}-albumart.${fileExtension}`);
       fs.writeFileSync(imagePath, picture.data);
-      albumArtUrl = `https://song-app-bakend.vercel.app:${port}/albumArt/${path.basename(imagePath)}`;
+      albumArtUrl = `/albumArt/${path.basename(imagePath)}`;
     }
 
     return {
@@ -100,7 +99,7 @@ app.get('/api/songs', (req, res) => {
 
 // Endpoint to upload a new song
 app.post('/api/songs', upload.single('file'), async (req, res) => {
-  const fileUrl = `https://song-app-bakend.vercel.app:${port}/uploads/${req.file.filename}`;
+  const fileUrl = `/uploads/${req.file.filename}`;
 
   // Extract metadata from the uploaded file
   const metadata = await extractMetadata(req.file.path);
@@ -113,7 +112,7 @@ app.post('/api/songs', upload.single('file'), async (req, res) => {
     fileUrl
   };
 
-  console.log(newSong)
+  console.log(newSong);
 
   db.query('INSERT INTO songs SET ?', newSong, (err, result) => {
     if (err) {
@@ -138,11 +137,11 @@ app.put('/api/songs/:id', upload.single('file'), async (req, res) => {
     // Update file if provided
     if (req.file) {
       // Delete old file
-      const oldFilePath = song.fileUrl.replace(`https://song-app-bakend.vercel.app:${port}/uploads/`, '');
+      const oldFilePath = song.fileUrl.replace(`/uploads/`, '');
       fs.unlinkSync(path.join(__dirname, 'uploads', oldFilePath));
 
       // Set new file URL
-      const newFileUrl = `https://song-app-bakend.vercel.app:${port}/uploads/${req.file.filename}`;
+      const newFileUrl = `/uploads/${req.file.filename}`;
       song.fileUrl = newFileUrl;
 
       // Extract new metadata from the uploaded file
@@ -192,11 +191,11 @@ app.delete('/api/songs/:id', (req, res) => {
 
     const song = results[0];
 
-    const oldFilePath = song.fileUrl.replace(`https://song-app-bakend.vercel.app:${port}/uploads/`, '');
+    const oldFilePath = song.fileUrl.replace(`/uploads/`, '');
     fs.unlinkSync(path.join(__dirname, 'uploads', oldFilePath));
 
     if (song.albumArtUrl) {
-      const oldAlbumArtPath = song.albumArtUrl.replace(`https://song-app-bakend.vercel.app:${port}/albumArt/`, '');
+      const oldAlbumArtPath = song.albumArtUrl.replace(`/albumArt/`, '');
       fs.unlinkSync(path.join(albumArtDirectory, oldAlbumArtPath));
     }
 
@@ -217,11 +216,11 @@ app.delete('/api/songs', (req, res) => {
     }
 
     results.forEach(song => {
-      const oldFilePath = song.fileUrl.replace(`https://song-app-bakend.vercel.app:${port}/uploads/`, '');
+      const oldFilePath = song.fileUrl.replace(`/uploads/`, '');
       fs.unlinkSync(path.join(__dirname, 'uploads', oldFilePath));
 
       if (song.albumArtUrl) {
-        const oldAlbumArtPath = song.albumArtUrl.replace(`https://song-app-bakend.vercel.app:${port}/albumArt/`, '');
+        const oldAlbumArtPath = song.albumArtUrl.replace(`/albumArt/`, '');
         fs.unlinkSync(path.join(albumArtDirectory, oldAlbumArtPath));
       }
     });
@@ -235,6 +234,5 @@ app.delete('/api/songs', (req, res) => {
   });
 });
 
-app.listen(port, () => {
-  console.log(`Server is running on https://song-app-bakend.vercel.app:${port}`);
-});
+// Export the app for Vercel
+module.exports = app;
