@@ -8,8 +8,17 @@ const mysql = require('mysql');
 
 const app = express();
 
-// Enable CORS for all routes
-app.use(cors());
+const corsOptions = {
+  origin: 'https://song-app-backend.vercel.app', // Replace with your frontend app URL
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  credentials: true,
+  optionsSuccessStatus: 204
+};
+
+app.use(cors(corsOptions));
+
+
+
 
 // Middleware to parse JSON bodies
 app.use(express.json());
