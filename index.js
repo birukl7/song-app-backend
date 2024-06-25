@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
@@ -31,10 +32,10 @@ if (!fs.existsSync(albumArtDirectory)) {
 
 // MySQL connection
 const db = mysql.createConnection({
-  host: '109.70.148.48',
-  user: 'biruklir_biruk', // Replace with your MySQL username
-  password: ')uEpUB*r7mgv', // Replace with your MySQL password
-  database: 'biruklir_song_app'
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER, // Use environment variable for username
+  password: process.env.DB_PASSWORD, // Use environment variable for password
+  database: process.env.DB_DATABASE
 });
 
 db.connect(err => {
