@@ -301,13 +301,15 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // Enable CORS for all routes
-const corsOptions = {
-  origin: ['http://localhost:3000', 'https://song-app-frontend.vercel.app'],
-  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-  credentials: true,
-  optionsSuccessStatus: 204
-};
-app.use(cors(corsOptions));
+// const corsOptions = {
+//   origin: ['http://localhost:3000', 'https://song-app-frontend.vercel.app'],
+//   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+//   credentials: true,
+//   optionsSuccessStatus: 204
+// };
+// app.use(cors(corsOptions));
+
+app.use(cors());
 
 // Middleware to parse JSON bodies
 app.use(express.json());
